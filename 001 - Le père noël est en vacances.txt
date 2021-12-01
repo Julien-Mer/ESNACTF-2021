@@ -1,0 +1,30 @@
+On a une image et on doit retrouver d'où elle a été prise.
+Pas besoin de stega ou de regarder les meta-données, la première chose qu'on remarque est de l'italien et surtout un nom et numéro de rue en zoomant un peu: 79 via arenula
+Une petite recherche google en Italie, on a cette adresse à Rome. On regarde sur Maps et super c'est bien cette rue, on se positionne a peu près dans le même angle de vue que la photo.
+Les coordonnées GPS n'ont pas besoin d'être ultra précises vu qu'on garde que 3 chiffres après la virgule.
+On regarde dans l'URL on a : 41.8933419,12.4754957. Ce qui nous donne comme flag pour le moment: ESNA{41.893;12.475;xx/xx/xxxx}.
+
+Si on regarde les différentes captures sur google street views et celle donnée, on s'aperçoit rapidement qu'un balcon a la même verdure que sur la photo en 2019. On tient donc déjà notre année. ESNA{41.893;12.475;xx/xx/2019}
+Sur la photo on voit clairement qu'on est en été avec l'ensoleillement et la verdure.
+La qualité de la photo est très bonne, on peut zoomer facilement et elle donne l'impression d'avoir été rognée (213x284), un format très atypique pour une telle qualité.
+Est-ce que notre iHuggsy national n'aurait pas recadré un screenshot de street view ? Il faut creuser la piste.
+
+Je ne trouve aucune trace du véhicule électrique garé sur la gauche dans les captures Street map, le stationnement est censé être interdit, le véhicule est arrêté sans conducteur, et il n'y a aucune panneau de bus ? Bizarre.
+De plus, avec la prise de vue, on pourrait penser que la photo est prise par un piéton, ou dans un véhicule stationné.
+De toutes façons street view donne seulement le mois et l'année. Donc il faut chercher ailleurs. A en juger par le style vestimentaire, l'ensoleillement, la végétation ...
+L'image a dû être prise entre mi juin et début septembre 2019.
+Si on y réfléchit, on a eu une hint mais je ne l'ai pas encore prise en compte. La photo a été prise a 9:42.
+L'ensoleillement est vraiment très fort pour cette heure là, on peut éliminer le début septembre. Juillet - Août me semble plus adéquat.
+Là on a 2 écoles, soit je BF avec 61 possibilités (01/07/2019, 02/07/2019...) soit je continue. Vu que c'est jéjé qui a fait le challenge je vais continuer ...
+J'ai repris du temps pour voir la photo et regarder des détails, et là j'ai vu quelque chose de très utile: la lune. On est sur une demi-lune visible a 09h42.
+On va donc croiser ce que l'on voit avec les phases de la lune sur les périodes en 2019.
+La lune est visible le matin, elle est donc en phase décroissante
+On obtient une intervalle bien plus précise:
+Du 22 au 27 juillet 2019
+Du 20 au 25 aout 2019
+On va croiser à la météo pour retirer les matins de pluies ou avec des nuages.
+Malheureusement, il a fait beau sur ces deux périodes, cependant il faisait bien plus chaud en juillet (4-5°C de différence). 
+
+Une intervalle de 10 jours c'est pas si dégueulasse après tout, je parierais plus sur Aout en vue de la végétation qui a déjà un peu cramé en haut de l'immeuble, tout a l'air bien sec et les gens sont trop couverts pour du 28-29°C ou alors ils sont un peu cons.
+Donc je vais commencer par aout ! 23 non, 22 non, 21 non, bon on passe a juillet un peu alors ... 24 non, 25 non, 23 non, 22 oui let's go !!
+ESNA{41.893;12.475;22/07/2019}
