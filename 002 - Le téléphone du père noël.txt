@@ -1,0 +1,10 @@
+Bon on a une capture dump en 7z, on dézippe, c'est clairement une arborescence d'un téléphone android. Ca colle à l'énoncé.
+
+On se balade un peu, on va voir les médias ça a l'air assez simple vu le nombre de flags.
+Super on trouve rapidement une image dans data\media\0\Pictures avec un des flags: 4nd_th1s_p34c3_m3_0ff, c'est le deuxième flag.
+Bon j'ai une flemme de fou, on tente l'outil forensic le plus puissant, le grep. Rien.
+On regarde les dernières dates de modification pour voir si on trouve pas un truc débile sinon on devra vraiment faire du forensic ...
+Rien de bien marquant, allons-y ça doit être dans l'historique web ou des messages ... Je lance autopsy et l'ingest module Android.
+On regarde rapidement les messages, super on a le flag manquant: th3y_st34l_my_pr3s3nts_.
+
+Notre flag est donc: ESNA{th3y_st34l_my_pr3s3nts_4nd_th1s_p34c3_m3_0ff}
