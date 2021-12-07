@@ -1,0 +1,17 @@
+Bon, c'est du pwn ça fait 1 an que j'en ai pas fait j'ai la giga flemme.
+Donc je look le hacktrickz, y'a un template mdr je vais l'utiliser. Je le download et le lance en local pour trouver l'offset.
+
+Je me choppe une erreur, j'ai déjà envie de crever...
+Bon on dirait que son programme nique tout parce-qu'il écrit son output pour dire qu'il payera rien.
+Je modifie un peu le script pour retirer cette merde:
+    if b"lol i don't have no money to buy this kind of shit bro." in recieved:
+        recieved = P.recvline().strip()
+		
+Bon il me dit que je dois trouver la libc, mais il leak l'adresse de puts. J'utilise le site: https://libc.blukat.me/
+avec l'adresse de puts 0x7ffff7a62aa0 et il me donne la libc: libc6_2.27-3ubuntu1.4_amd64
+
+Je la download et l'ajoute à mon repo, je change le script pour la load, je le lance. Super j'ai un shell mdr.
+$ cat /flag.txt                                                                                                         
+ESNA{Xmq5ER2He6Ns4acio37LUg0Pxk19tBWF}
+
+Let's go ça aurait first blood :)
