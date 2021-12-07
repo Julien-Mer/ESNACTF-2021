@@ -1,0 +1,47 @@
+Dommage ce soir c'est de la crypto. On commence par aller recup le message du père Noël.
+Go cyberchef, aucun magic, on lance un from base 64, bon ça sent la merde déjà rien, on tente magic par dessus en intensive mode avec un clear known sur ESNA.
+Rien.
+Bon, on essaye des outils en ligne pour cipher identifier et auto-solve. Rien de bien incroyable.
+On regarde l'endpoint pour check. On submit le message du papa noël, il est bien valide. On modifie le message, il est toujours valide.
+On change la longueur, il devient invalide ! On constate que pour être valide, le message doit simplement être un multiple de 64.
+C'est un indice j'imagine, on cherche un chiffrement qui fonctionnement par "bloc" de 64.
+On se lance un petit dirb pour voir si une clé traine. Rien de concluant.
+
+Bon j'ai fait une grosse pause j'avais un peu le seum, j'avais une théorie sur laquelle c'était un chiffrement par bloc donc de l'AES.
+Jéjé a sorti une hint qui dit que c'est de l'AES CBC. En faisant quelques recherches on apprend l'existence d'une vulnérabilité qui s'appelle l'attaque padding grâce à l'oracle.
+En gros, si on a un moyen de savoir quand notre padding est bon ou non, on peut finir par récupérer le contenu d'un bloc, puis de tout le cleartext. C'est exactement notre cas.
+
+En cherchant, je trouve la librairie paddown, ça m'a l'air plutôt sympathique donc j'implémente ça avec comme oracle l'endpoint que nous avons.
+
+from base64 import b64decode,b64encode
+import requests, sys
+from paddown import Paddown
+
+if __name__ == "__main__":
+    port = 51339
+    sessid = {"PHPSESSID": "8bueghs9j12moinnajk297apgb"}
+    
+    S = requests.Session()
+    res = S.get(f"http://192.168.120.11:{port}/get_santa_message", cookies=sessid).text
+    print(res)
+    ciphertext=b64decode(res)
+
+    class MyPaddown(Paddown):
+        i=1
+        # Implement has_valid_padding to check for padding errors, return False on everything but valid padding.
+        def has_valid_padding(self, cipher):
+            r = S.post(f"http://192.168.120.11:{port}/check_santa_message_correct", data=b64encode(cipher), cookies=sessid)
+            res=r.text
+            if "not happy" in res:
+                return False
+            if "correct" in res:
+                print(f"Correct {self.i}")
+                self.i=self.i+1
+                return True
+
+    plaintext_decrypted = MyPaddown(ciphertext).decrypt()
+    print(plaintext_decrypted)
+	
+Je lance le script et j'attends 5 minutes environ, quand enfin la délivrance: bytearray(b'ESNA{h421oq7vkix0UHmY5N8BzERFPagJst9e}\n\n\n\n\n\n\n\n\n\n')
+
+Eh mercé !
