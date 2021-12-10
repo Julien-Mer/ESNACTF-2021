@@ -1,0 +1,111 @@
+Jour 1:
+Enfin du web !! 
+Avant de commencer on va lire le code source en php.
+On voit vite que le username est admin et que le mot de passe est contenu dans une variable d'environnement.
+
+Clairement on a une LFI sur la partie admin. Il faut être logged ça fait un peu chier c'est bien secure avec le die et location.
+On va voir les cadeaux en .txt, rien d'intéressant et l'arborescence est listable, rien de plus à creuser là dessus.
+Dans fonction on a un get_data qui a l'air ultra insecure et qui est appelé sur le login. On va creuser ça pour passer en authenticated et aller taper sur notre LFI ensuite.
+
+if($key !== "admin")
+{
+	global $$key;
+	$$key = $value;
+}
+
+Intéressant, il est appelé avec $_POST, il nous suffit de renseigner $_SESSION['isLogged'] en 1 sur le login, sinon on peut overwrite admin mais il y a une sécu qui ne semble pas vulnée (a moins que php soit case insensitive pour les variables) !
+Let's go reproduire le code en local pour bien comprendre notre injection. Un petit test rapide et super on est admin avec _SESSION[isLogged]=1 en parametre POST.
+Maintenant la LFI, son système de filtre a l'air assez relou, bon c'est du blacklisting donc ça pue la vuln et le cas non géré.
+
+Je me demande ce qui est attendu, si c'est une LFI simple, c'est rincé on aura pas tant d'accès, sachant qu'en plus il y a sa blacklist. On devrait essayer de call une RFI ou RCE.
+La RFI on testera à la fin, généralement c'est mort. La RCE j'ai une petite idée, on a la main sur les sessions, donc on peut y injecter du code PHP. Si on load notre session on aura donc une RCE :) !
+Merde je viens de lire qu'il utilise file_get_contents, j'ai un peu la haine, ça nique mon idée de RFI et RCE avec un include, j'aurais dû prendre mon temps pour lire.
+
+En lisant rapidement la doc de file_get_contents on voit qu'il inclut son propre path (paramètre à true), la haine, on peut pas directement taper en /.
+Résumons sa blacklist:
+- Il empêche l'url encoding avec le % en début
+- la balise empêche de load du code php même si je vois pas l'idée. 
+- On ne peut pas commencer par .., ni par / suivi de ., donc sortir de l'arbo.
+- Il désactive tous les wrappers. 
+- Il désactive tous les fichiers php qui commencent par un espace, un caractere de l'alphabet, _ - . et /. 
+J'ai l'impression de me faire violer, ça fait mal.
+Bien sûr tout ça en case insensitive, sinon c'est pas drôle.
+
+Résumons la situation:
+Adieu les wrappers, les rce etc. 
+On peut load des urls externes mais c'est pas super utile sachant que c'est pas exécuté, sauf pour faire de la XSS, mais useless ici. On peut aussi faire de la SSRF en soit, mais on pourra rien submit en POST.
+Le warning en cas de mauvais fichier nous dit qu'on est dans /var/www/html.
+
+On va tenter un truc obvious alors: .htaccess. Rien.
+J'ai pas encore dirb le chall, c'est pas sérieux ça ... C'est fait mais rien non plus.
+La vuln est forcément sur le blacklisting de la LFI, Worty est pas assez con au point de faire du blacklisting, en une regex son problème de LFI était réglé. La vuln est forcément dessus.
+
+Bon on va se faire un script python pour tenter du path truncation. Le script est fait, pas de path truncation possible, ça fait même pas crash preg_match, dommage. Je le convertis en script pour chercher de la SSRF.
+Rien de concluant.
+
+Après de nombreuses heures sans trouver vraiment grand chose d'intéressant je parviens à utiliser le wrapper data qui n'a pas forcément besoin des slashs: data:application/x-httpd-php;base64,PD9waHAgc3lzdGVtKCJ3aG9hbWkiKTsgPz4
+Dommage, on a un file_get_contents sinon c'était une belle RCE ....
+
+Jour 2:
+Je vais être sûr que le réseau de la machine est dans le scope avant de pousser les SSRF et continuer de scanner. Je pose la question en chan public, effectivement non, ça supprime déjà une piste, adieu la SSRF.
+Ce qu'il nous reste en pistes:
+- Réussir à trigger un php wrapper malgré les filtres
+- Réussir a directory traversal (trouver une parade au filtre sur les ..) pour leak des fichiers
+- Faire une RCE grâce à la vuln qui nous permet de controler les variables dans login
+- Continuer la piste de "path truncation" mais pour faire crash preg_match
+
+Après énormément de tests sur la RCE, de bruteforce, de tentative de crash de preg_match je n'arrive à rien. Pourtant la vuln sur preg_match devrait fonctionner ...
+Impossible de bypass le filtre sur les .., la RCE grâce à la vuln du login semble idyllique aussi.
+
+Jour 3:
+Il semblerait que le wrapper avec file://localhost permet de se déplacer sur l'arbo en partant de la racine. Ca ne fonctionne pas avec 127.0.0.1, il faut impérativement utiliser localhost.
+Je leak /etc/password pour test. Je leak ensuite /etc/apache2/sites-available/000-default.conf pour voir le scope entier du web.
+Je vois qu'il y a un autre vhost santaadmin.presents.local (voir dessous), je l'ajoute a mon /etc/hosts pour pouvoir taper dessus.
+ServerName santaadmin.presents.local
+
+DocumentRoot /var/www/santaadmin/
+<Directory /var/www/santaadmin>
+	Options Indexes FollowSymLinks
+	AllowOverride All
+	Require all granted
+</Directory>
+
+Je vais ensuite lire son code source: file://localhost/var/www/santaadmin/index.php
+?php
+if($_SERVER["REQUEST_METHOD"] === "POST")
+{
+    if(isset($_POST["file"]) && isset($_POST["hash"]) && !empty($_POST["file"]) && !empty($_POST["hash"]))
+    {
+        $compute_hash = hash_hmac("sha256",$_POST["file"],"s4nt4s3cr3tv4ri4bl3");
+        if($_POST["hash"] === $compute_hash)
+        {
+            $interdits = array(
+                "'",
+                '"',
+                ";",
+                "&", 
+                "$",
+                "(",
+                ")",
+                "{",
+                "}"
+            );
+            $regexp = implode(':', $interdits);
+            if (preg_match('#' . $regexp . '#i', $_POST["file"]) !== 0) $msg = "Unable to found file to delete.";
+            else{
+                shell_exec("rm ../html/cadeaux/".$_POST["file"]); //Don't care $_POST["file"] is trusted
+                $msgTrue = htmlspecialchars($_POST["file"])." has been removed";
+	    }
+        }else $msg = "Wrong hash, are you okay santa?";
+    }
+}
+?>
+Bordel j'ai déjà envie de crever.
+Il y a une verif avec un hash, ça a pas l'air très dur à bypass vu qu'on va réécrire le code en local. Il y a ensuite une superbe regex du seigneur pour nous empêcher de faire une command injection.
+Je vois tout de suite qu'il n'y a pas le caractère ` d'interdit, donc command injection goes brrrr, par contre c'est en blind, mais on a une LFI donc osef et on pourra sûrement reverse shell.
+Premier test d'injection avec exfiltration dans /tmp de whoami, on a bien www-data. On perd pas de temps, go reverse shell.
+Mon IP est 10.8.0.53, on dirait que le serveur arrive pas a taper dessus ... On va essayer un VPS avec un curl. Ca passe, go reverse shell. Ca passe. Connection from 46.18.99.34 44398 received!
+On passe en shell interactif: python -c 'import pty; pty.spawn("/bin/bash")'.
+On peut directement cat le flag en /, ça part ! ESNA{xzL2B6189WtEUexJ35s4NqmF7P0aHckv}
+
+Je modifie un peu mon script pour qu'il me sorte le flag lorsque je le lance comme ça je perdrai pas de temps quand je voudrai le valider.
