@@ -1,0 +1,52 @@
+Du réseau, super ça va encore être bien chiant cette histoire, en hard en plus..
+On a un pcap et un dump.pfx, jamais vu cette extension, je vais me renseigner avant de commencer.
+
+"The .pfx file, which is in a PKCS#12 format, contains the SSL certificate (public keys) and the corresponding private keys"
+
+"PFX files Personal Exchange Format, is a PKCS12 file. This contains a variety of cryptographic information, such as certificates, root authority certificates, certificate chains and private keys. 
+It’s cryptographically protected with passwords to keep private keys private and preserve the integrity of the root certificates. The PFX file is also used in various Microsoft products, such as IIS."
+
+Super l'ambiance il y a un password sur ce doux pfx du seigneur en plus...
+On va se pencher sur la capture réseau du coup.
+
+On voit un joli POST sur http://146.59.156.82/ avec username=d4rkus3r&password=D4rkC0rpw1llb3th3b3stc0mp4ny
+Je reconnais l'IP c'est celle du vps de Wourty !! On va filtrer dessus: ip.src == 146.59.156.82 || ip.dst == 146.59.156.82 
+Rien de bien emoustillant, on voit une tentative d'injection SQL, je ressens la puissance dévastatrice de ce hacking à travers mon écran
+
+On regarde les résolutions DNS, un seul truc louche: d20wn17thngkfa.cloudfront.net, sinon du leboncoin, google etc.
+Echec ça renvoie sur Amazon.
+On a une grosse communication avec 192.168.120.50 qui est chiffrée (TLS).
+J'imagine qu'avec notre fichier .pfx on doit guess le password, celui qu'on a eu au dessus ? ou le BF, pour ajouter les clés à notre wireshark. Ou alors il y a une vuln.
+J'ajoute le certificat a wireshark avec le password qu'on a trouvé, ça fonctionne. Je vois des flux RDP dans le dump maintenant, pas cool.
+
+
+A partir de la trame 2609 on voit le début du flux rdp. On lit rapidement, on voit quelques infos sur le poste: username: lade, password: lade
+Il existe une lib pour faire du RDP_Replay, elle fonctionne sous ubuntu 14.04. Go installer une VM, ouais en fait non vu ma co.
+Go docker, ça s'installe, ça compile omg parfait ! Je lance:
+root@4ab514ff5d17:~/RDP-Replay/replay# ./rdp_replay -r clear2.pcapng 
+ERROR: Bad length (too big) in fastpath_recv_update_data
+do_response_fast: decrypt failed.
+
+Ok lourd.
+
+Je spécifie plutôt le port donc 3389 et je lui donne la clé pem générée avec openssh: openssl pkcs12 -in dump.pfx -nocerts -out key.pem
+root@4ab514ff5d17:~/RDP-Replay/replay# ./rdp_replay -r capture.pcapng -t 3389 -p key.pem                                
+Enter PEM pass phrase:                                                                                                  
+RDP SSL MODE Requested by server!!                                                                                      
+SSL private key found.                                                                                                  
+SSL: Decrypt failed
+
+Ah ouais c'est le début d'un long suicide assisté ça.
+Bon après tout il attend du pcap et je lui donne du pcapng, je vais lui donner du pcap pour maximiser mes chances.
+Ca change rien, quelle merde cet outil.
+Bon j'exporte seulement les paquets nécessaires et en lisant un peu d'issues sur github, il faut tenter le port éphèmere plutôt. Je fais ça et je mets une dump déjà déchiffrée avec la clé. Ca passe !
+./rdp_replay -r finalplease.pcap -t 49352 --show_keys -o test.avi --save_clipboard cp.txt --no_cksum -p key.pem 
+
+Je vous épargne la galère pour transférer mes pcap via un serveur web sur le docker etc, et l'installation de vcxsrv pour recupérer la GUI du tool ...
+On a pas l'écran du RDP mais on a mis show_keys donc on voit ce qui est écrit et on a le clipboard. 
+1280x800x8
+<BS>hello 1<BS><BS>, good job, do u like this kind of challenge ehe
+oh and by the way, the flag is ESNA{d0_u_l1k3_w1nd0ws_f0r3ns1c_??}
+good bye ;p)
+
+Ca part en prod !
