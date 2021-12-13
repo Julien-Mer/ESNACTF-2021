@@ -1,0 +1,37 @@
+Bon on arrive sur le challenge de box, premier réflexe, déjà on fait un bash, c'est mieux pour lire et plus user friendly.
+Ensuite on go dans /tmp, on download linpeas.sh et on le lance.
+
+On le laisse tourner et on regarde les résultats. Tout de suite on remarque quelque chose d'étrange.
+On a notre user: rogue_acct qui peut exécuter /usr/bin/install avec sudo sans password en tant que uvuwewewe.
+uvuwewewe lui peut lancer mawk en root !
+On tient déjà notre schéma de privesc, on compromet uvuwewewe grâce à notre utilisateur courant puis on utilise mawk pour privesc.
+
+Un petit tour sur https://gtfobins.github.io/ et on tape install.
+On apprend qu'avec install, on peut copier un fichier en spécifiant les droits tout en gardant l'utilisateur owner.
+Dans notre cas, nous allons copier /bin/sh de uvuwewewe avec les SUID ! On s'exécute, ça fonctionne ! 
+On le lance et là surprise ! Rien. On est toujours rogue_acct... Nous ne sommes pas dans le même groupe que lui.
+
+Je me renseigne sur les options possibles de install, je regarde la modification des droits chmod, les flags et autres options, je fais des tests en tout genre mais rien de concluant.
+J'essaye de m'ajouter au groupe uvuwewewe, échec. Je creuse toujours et longuement, j'essaye d'utiliser python pour setuid et pouvoir lancer le shell en tant que uvuwewewe, même résultat.
+J'apprends un premier tips en relisant gtfobins, on peut utiliser sh -p pour que le shell prenne en compte les SUID !
+
+Super, whoami: uvuwewewe !!!! Enfin !!! Je tente un sh pour ouvrir un autre shell dans ce shell(shellception), whoami: rogue_acct, wait what ?? Bon exit, puis id, WTF uvuwewewe est en EUID et EGID....
+Aka je l'ai dans le fiak.
+
+S'en suit un long acharnement pour trouver comment "bypass" cette histoire, je réessaye mon tips de python avec ce nouveau shell, rien. Je vois que je peux aussi utiliser mon programme en C compilé.
+Bon après une forte hésitation, je le fais. Echec, ça ne compile pas, je rechange mon binaire, ça me lance bien un shell mais ça n'a rien changé, au contraire j'ai perdu les EUID etc.
+J'essayais bien de me mettre soit l'UID 0 / GID, soit 999 correspondant à uvuwewewe... Bref je deviens fou et je m'acharne un peu dessus.
+
+Je découvre la fonction setreuid et setregid, à ma grande stupeur ça ne change rien... Après de trèèèès nombreux tests, je me rends compte que je n'envoyais pas le bon binaire mais une version précédente..
+Enorme tocard que je suis. Bref je lance le nouveau, surprise ça fonctionne..
+$ id
+uid=999(uvuwewewe) gid=998(rogue_acct) groups=998(rogue_acct)
+Ca a fonctionné c'est à dire que mon setreuid a bien fonctionné, je suis considéré comme uvuwewewe et la commande id me le confirme. ENFIN.
+Je retourne sur gtfobins et je prends la privesc pour mawk et je la lance: sudo mawk 'BEGIN {system("/bin/sh")}'
+Tiens on dirait un shell ...
+$ sudo mawk 'BEGIN {system("/bin/sh")}'
+# whoami
+root
+# cd /home/root
+# cat flag.txt
+ESNA{bsioYL7JU41zgaq0NkH9635vcWR2FBxE}
