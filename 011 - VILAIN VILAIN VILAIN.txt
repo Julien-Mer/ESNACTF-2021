@@ -1,0 +1,39 @@
+On commence le challenge, on a une exécutable, et un dossier lib.
+On fait un file, PE32, un strings, c'est du python 3.9.
+J'essaye de décompiler avec uncompyle, decompyle etc des décompilateurs "en ligne"... Rien ne fonctionne.
+Saoulé, je veux le lancer dans ma VM Windows, elle est morte..... Flemme d'en refaire une, je demande à Jéjé si c'est safe, il me dit oui, je lance.
+Là mon pc blue screen... J'déconne je wireshark je vois le CNC qui est contacté en HTTP. J'essaye de comprendre les clés passées mais c'est du chinois.
+Le programme crash et le cnc renvoie des erreurs 500 au deuxième call.
+
+Bon je demande à Worty si c'est normal cette merde, il me dit que oui c'est juste une sécurité pour pas que les cassos comme moi le lancent sur leur machine.
+Il est pas safe de base mais worty l'a désarmé en gros. Bon à savoir !
+
+Je me prends la tête pour essayer de le décompiler vu que le peu d'infos du wireshark ça a l'air inutilisable.
+J'installe pycdc qui a l'air de pouvoir décompiler du python 3.9. Je décompile la classe main et init qui étaient en .pyc dans le zip library du dossier lib.
+Je prends quelques minutes pour comprendre le code, je m'aperçois qu'il manque une partie sur un listening de socket.
+
+Le fonctionnement a l'air assez simple, il instancie sa partie crypto, il génère une clé sur 16 bytes et un identifiant de 96 bytes.
+Il chiffre les fichiers importants et dossiers etc (partie retirée par Worty), il écrit ensuite son readme (aussi retiré par Worty).
+En faisant un strings on devine les valeurs qu'il y avait avant, sûrement commentées ? mais visibles partiellement.
+
+Il commence ensuite à communiquer avec le CNC, il lui envoie son identifiant généré et sa clé chiffrée à l'aide d'une clé publique inscrite en dur (Cipher_PKCS1_v1_5).
+Après cela il reçoit comme instruction de taper sur un endpoint où il donne son identifiant et son système d'exploitation (Linux écrit en dur ?)
+
+Ici Worty stoppe l'exécution, sûrement une protection supplémentaire. Si elle continuait, le programme ouvrirait un port semble-t'il (code manquant) sur un protocole et port que je n'ai pas pu déterminer.
+Il accepterait toutes les connexions et exécuterait les commandes envoyées en fournissant le résultat sur l'endpoit resultcmd.
+
+Je corrige quelques erreurs liées à la compilation et je le run. Super il arrive bien aux calls HTTP.
+Ma stratégie est simple, flemme de redev un zombie pour attaquer le cnc, je vais utiliser ce code existant.
+Chaque chose en son temps, je cherche à voir quel est le protocole utilisé et quel port, on va faire un truc bien !
+Je le run sur un VPS, je lance un tcpdump pour analyser mon pcap par la suite. Je run le zombie innoffensif.
+J'analyse ensuite le dump, tristesse, il n'y a aucune autre interaction que les calls HTTP.
+Je me mp Worty pour lui demander si son CNC était bien UP, je continue mes tests et à essayer de mieux décompiler pour avoir le port et protocole. Avec du recul je pense qu'ils ont également été commentés.
+Worty me dit qu'il va vérifier quand il sera chez lui ...
+
+Après quelques temps je me dis que je vais directement essayer d'attaquer l'endpoint. J'ai rapidement regardé le CNC précédemment qui tournait sur 146.59.156.82:59862, je l'ai DIRB et j'ai remarqué que c'était du python en backend.
+Je regarde l'output, c'est Receive data: ["DONNEE ENVOYEE"], je tente directement une SSTI sur les paramètres en POST, elle passe niquel {{7*7}} => 77.
+Donc soit Jinja soit Twig, je tente {{7*'7'}} => 7777777, c'est Jinja !
+Go payload all the things https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Server%20Side%20Template%20Injection#jinja2---basic-injection
+On prend une des premièrs RCE: {{ self._TemplateReference__context.cycler.__init__.__globals__.os.popen('id').read() }}
+Elle passe niquel, plus qu'à ls / et cat /flag.txt ! 
+Receive data: "ESNA{1ts_r34lly_fun_t0_h4ckb4ck_!!}
