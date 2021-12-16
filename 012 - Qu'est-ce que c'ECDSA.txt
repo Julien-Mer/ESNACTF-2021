@@ -1,0 +1,30 @@
+On a un endpoint web qui nous permet d'avoir la signature d'un message donné en param post (sign_my_message).
+Ensuite on doit envoyer la clé privé sur is_this_a_private_key en format POST en hex.
+
+Bon on sait que c'est de l'ECDSA SECP256k1, pas trop de doûte c'est du nonce reuse, on va tester pour confirmer.
+
+Finalement je me rends compte qu'il n'y a pas de public key, j'ai identifié pas mal d'exploits et write ups mais il me manque ça.
+https://0xswitch.fr/CTF/ecw-2020-final-ecdsa-nonce-reuse
+https://ctftime.org/writeup/21895
+https://github.com/CTF-STeam/ctf-writeups/blob/master/2021/TenableCTF/ecdsa_solve.py
+https://github.com/Iptior/WriteUp/tree/master/ECW2017/ECDSA
+
+Je commence mon script pour récupérer les signatures de deux messages, c'est tout ce qu'il nous faut pour mener à bien l'attaque.
+Je galère déjà à trouver comment unserialize les signatures, après un bon moment je découvre pickle sur python, mais ça me saoule il faut lui donner un fichier.
+Enorme flemme de me taper la doc ou d'aller suivre des forums, j'utilise cyberchef avec mes messages et une recette from base64 et j'enregistre sous un fichier.
+Ca fonctionne et je peux enfin avoir mes signatures.
+
+Ensuite je perds encore quelques neurones étant donné qu'avec la public key on pouvait connaitre l'order de la curve. 
+Me demandez pas d'expliquer, je suis un énorme mongole, je vois ce qu'il manque je cherche à comment le remplacer ou le trouver en me fatiguant le moins possible.
+L'art d'être une purge. Mais ça partait vite sur des calculs de maths etc, j'ai même utilisé la lib ecdsa pour récupérer la public key, j'ai réussi mais j'arrivais pas a récupérer l'order.
+Il fallait faire ensuite un Verifkey etc ça m'a saoulé et j'ai trouvé ça: https://cryptobook.nakov.com/digital-signatures/ecdsa-sign-verify-messages
+
+"For example, the 256-bit elliptic curve secp256k1 has: Order n = 115792089237316195423570985008687907852837564279074904382605163141518161494337 (prime number)"
+
+Super comme un bon con je vais pouvoir utiliser ça sans avoir a faire aucun calcul ou je ne sais quoi, bref un bel assisté.
+Finalement je mets les variables au bons endroits de ma payload, je la run, ne pas oublier de mettre un hex()
+Et TADAAA 
+WELL PLAAAAAYED !                                                                                                       
+ESNA{fg9R3c0xH254zUNaq86eLsPit1YvWk7E} 
+
+Déso pas déso les amateurs de crypto qui se sentiront potentiellement frustrés de ce WU digne des plus grands h4x0r pro crypto de ce monde, mais rien à foutre les reufs
