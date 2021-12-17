@@ -1,0 +1,21 @@
+Go stega, j'ouvre aperisolve, normich, je mets le password Mel.
+Je commence à lire, walou d'intéressant, on voit tifffile.py dans les strings avec les dimensions, un petit indice.
+Jéjé a dû utiliser du python pour générer ce truc là, et le tif n'est sûrement pas anodin.
+
+Au début le spectre me fait penser à des carcasses de poulets qui ont trop de côtes, pas super utile pour avoir un flag.
+Finalement il ressemble à un spectre que certains outils peuvent déchiffrer pour donner un vocal, comme phonepaper.
+L'appli ne donne rien dessus. Le nom des spectres est mel spectrogram, d'où le hint avec Mel.
+
+Je fais des recherches google, je tombe sur une lib librosa, au début je galère pour trouver comment partir d'une image vers un wav... C'est sûr jéjé a utilisé ça.
+Je dork comme un malade pour voir des github etc, j'apprends que finalement librosa inverse le spectrogramme.
+Je reprends l'appli en inversant les couleurs et inversant aussi le spectrogramme, j'active aussi l'option pour avoir du son tout le temps.
+On entend un début qui ressemble à : "Le flag est" mais avec du recul je pense que c'était juste de l'auto persuasion, vu le flag final.
+Je me suis dit que j'allais essayer de comprendre la suite mais impossible.
+
+Donc je reprends le dork, finalement je tombe très rapidement avec les bons mots clés sur ce post: https://stackoverflow.com/questions/68693311/convert-mel-spectrogram-png-to-voice-using-librosa-is-it-possible
+Niquel, que demande le peuple !
+Je reprends son script, je corrige les erreurs et je run sur le sample rate de base normalement donc 22050.
+Ca met 5 minutes à tourner et la wav est générée.
+
+Le flag est: ESNA{l0l_t_sur_que_taimes_la_stega}, ça flag pas j'ai essayé 2 ou 3 variantes mais vu que c'est dit par google, on a pas les majs et la ponctuation.
+Je demande à jéjé le format pour flag, je ferai ça demain matin il est tard :/ ... En attendant je push quand même le WU, la bise
