@@ -1,0 +1,25 @@
+On récupère la liste des endpoints sur /endpoints.
+
+Si on tape en POST sur / avec en paramètre username le nom d'utilisateur.
+Cela nous créé un cookie user.
+En utilisant ce cookie sur l'endpoint /letters en GET, on a un message qui nous dit qu'il faut l'attribut admin.
+
+Ca fait un peu chier, j'essaye de voir le format du cookie, ça ne me dit rien, pas du jwt, c'est du base64 avec ce qui semble être de l'AES.
+Chaque cookie est différent, il y a sûrement un timestamp ou un id aléatoire.
+J'essaye d'utiliser padbuster, cyberchief en magic pour trouver une key, de xor deux cookies etc.
+Après plusieurs heures de mongolisation, je déclenche une erreur en modifiant seulement un caractère dans un cookie valide.
+Il y a une mini information disclosure, on apprend que le serveur web tourne sur /var/www/index.js.
+A force de mongolisation, je vois que \ provoque une erreur sur le cookie (la même information disclosure), ça casse le JSON.
+J'en conclue qu'il faut attaquer le parsing JSON, je créé donc une payload pour injecter l'attribut admin: ", "admin": 1, "yolo":"
+
+Je suis donc enfin administrateur, il faut un paramètre namechild pour lire la lettre d'un enfant, je le fournis donc en paramètre GET.
+On peut voir un PDF s'afficher, j'essaye plusieurs payload (voir dans le script).
+Je parviens à provoquer un arbitrary file reading, je lis donc le code source du serveur web, dont nous avons pu trouver le path précédemment.
+En lisant le code source, je m'aperçois qu'il existe une endpoint: sendletterstochildren qui prend comme paramètre childname.
+Il exécute un script en lui fournissant le childname en argument, ça sent la command injection.
+Je build donc ma payload, impossible de faire un reverse shell, je mongolise longtemps également en essayant d'exfiltrer mes résultats dans un fichier.
+Je ne parviens pas à les lire, c'était logique il fallait une extension txt par exemple, cela explique pourquoi je ne pouvais pas lire /etc/passwd, j'obtiens:
+`ls -la > /tmp/ahah.txt`
+Je vais voir le contenu de mon fichier via mon file reading, je vois le fichier de flag avec un nom assez long, je fais alors:
+`cat /*.txt > /tmp/ahah.txt`
+ESNA{pL4qk0E8PUBaoeNHg1W2t9v7sm3FRc5J}
