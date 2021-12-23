@@ -1,0 +1,23 @@
+Ce write-up va être rapide, j'ai la flemme, il est tard j'veux juste dormir.
+J'ai fait une dizaine de partie, j'ai vu que c'était ultra chiant.
+Les dommages ont pas l'air de pouvoir être augmenté, la chance c'est bien mais on se fait défoncer par wortax en combat.
+Faut tout miser sur la vie donc, et sur la chatte. Donc j'ai fait un script pour faire tourner ça en boucle avec un pseudo bot.
+
+Ca a tourné un peu et flag: 
+ESNA{yaig3817ENkL4R0sJcBetmvo6qWY2PUz}
+
+Au sabre laser, 7 pts en HP.
+Soit avant le combat:
+====================
+PLAYER Ok
+HP : 3100 / 3100
+Arme équipée : Sabre laser
+Attaque : 270.0 / 330.0
+Force -> 7
+Intelligence -> 0
+Chance -> 0.3
+Dextérité -> 100
+Armure -> 0.0
+====================
+
+Voilà je vais dormir, la bise.
